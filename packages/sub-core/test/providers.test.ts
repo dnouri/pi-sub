@@ -19,6 +19,41 @@ function assertWindow(usage: UsageSnapshot, label: string): void {
 	assert.ok(found, `Expected window ${label}`);
 }
 
+test("anthropic reads token from ANTHROPIC_OAUTH_TOKEN env var", async () => {
+	const provider = new AnthropicProvider();
+	let authorization: string | undefined;
+
+	const { deps } = createDeps({
+		env: { ANTHROPIC_OAUTH_TOKEN: "env-token" },
+		fetch: async (_url, init) => {
+			authorization = (init as any)?.headers?.Authorization;
+			return createJsonResponse({});
+		},
+		execFileSync: () => "",
+	});
+
+	await provider.fetchUsage(deps);
+	assert.equal(authorization, "Bearer env-token");
+});
+
+test("anthropic env token overrides auth.json", async () => {
+	const provider = new AnthropicProvider();
+	let authorization: string | undefined;
+
+	const { deps, files } = createDeps({
+		env: { ANTHROPIC_OAUTH_TOKEN: "env-token" },
+		fetch: async (_url, init) => {
+			authorization = (init as any)?.headers?.Authorization;
+			return createJsonResponse({});
+		},
+		execFileSync: () => "",
+	});
+	withAuth(files, { anthropic: { access: "file-token" } }, deps.homedir());
+
+	await provider.fetchUsage(deps);
+	assert.equal(authorization, "Bearer env-token");
+});
+
 test("anthropic parses windows and extra usage", async () => {
 	const provider = new AnthropicProvider();
 	const { deps, files } = createDeps({
