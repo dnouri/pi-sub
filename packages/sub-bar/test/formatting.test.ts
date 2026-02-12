@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { visibleWidth } from "@mariozechner/pi-tui";
 import type { Theme } from "@mariozechner/pi-coding-agent";
 import { formatUsageStatus, formatUsageStatusWithWidth, formatUsageWindowParts } from "../src/formatting.js";
+import { shouldShowWindow } from "../src/providers/windows.js";
 import { getDefaultSettings } from "../src/settings-types.js";
 import type { UsageSnapshot } from "../src/types.js";
 
@@ -326,4 +327,25 @@ test("fill bars with extras stay within width", () => {
 	assert.ok(output);
 	assert.ok(output.includes("Model multiplier"));
 	assert.ok(visibleWidth(output) <= 140);
+});
+
+
+test("codex shows model-specific usage for GPT-5.3-Codex-Spark", () => {
+	const settings = getDefaultSettings();
+	const usage: UsageSnapshot = {
+		provider: "codex",
+		displayName: "Codex Plan",
+		windows: [
+			{ label: "5h", usedPercent: 12 },
+			{ label: "GPT-5.3-Codex-Spark 5h", usedPercent: 3 },
+			{ label: "GPT-5.3-Codex-Spark Week", usedPercent: 4 },
+		],
+	};
+
+	assert.equal(shouldShowWindow(usage, usage.windows[1], settings, { id: "gpt-5.3-codex-spark" }), true);
+	assert.equal(shouldShowWindow(usage, usage.windows[0], settings, { id: "gpt-5.3-codex-spark" }), false);
+
+	assert.equal(shouldShowWindow(usage, usage.windows[1], settings, { id: "gpt-4o" }), false);
+	assert.equal(shouldShowWindow(usage, usage.windows[0], settings, { id: "gpt-4o" }), true);
+	assert.equal(shouldShowWindow(usage, usage.windows[2], settings, { id: "gpt-4o" }), false);
 });
