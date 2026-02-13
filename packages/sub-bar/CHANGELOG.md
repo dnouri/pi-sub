@@ -1,5 +1,16 @@
 # @marckrenn/pi-sub-bar
 
+## 1.2.0
+
+### Minor Changes
+
+- PR #10: `showContextBar` now defaults to off (for upgrades and new installs). Thanks [@pasky](https://github.com/pasky) for this feature.
+- Adds optional context-window usage bar with configurable placement and status placement improvements for status bar rendering.
+
+### Updated dependencies:
+- @marckrenn/pi-sub-core@1.2.0
+- @marckrenn/pi-sub-shared@1.2.0
+
 ## 1.1.0
 
 ### Minor Changes
