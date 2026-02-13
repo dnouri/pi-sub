@@ -293,7 +293,7 @@ function renderBarSegments(
 	return { segments, minimal };
 }
 
-function formatProviderLabel(theme: Theme, usage: UsageSnapshot, settings?: Settings): string {
+function formatProviderLabel(theme: Theme, usage: UsageSnapshot, settings?: Settings, model?: ModelInput): string {
 	const showProviderName = settings?.display.showProviderName ?? true;
 	const showStatus = settings?.providers[usage.provider]?.showStatus ?? true;
 	const error = usage.error;
@@ -337,7 +337,9 @@ function formatProviderLabel(theme: Theme, usage: UsageSnapshot, settings?: Sett
 
 	const rawName = usage.displayName?.trim() ?? "";
 	const baseName = rawName.replace(/\s+(plan|subscription|sub\.?)[\s]*$/i, "").trim();
-	const providerName = baseName || rawName;
+	const resolvedProviderName = baseName || rawName;
+	const isSpark = usage.provider === "codex" && isCodexSparkModel(model);
+	const providerName = isSpark ? `${resolvedProviderName} (Spark)` : resolvedProviderName;
 	const providerLabel = showProviderName
 		? [providerName, labelSuffix].filter(Boolean).join(" ")
 		: "";
@@ -610,7 +612,8 @@ export function formatUsageStatus(
 	settings?: Settings
 ): string | undefined {
 	const baseTextColor = resolveBaseTextColor(settings?.display.baseTextColor);
-	const label = formatProviderLabel(theme, usage, settings);
+	const modelInfo = resolveModelInfo(model);
+	const label = formatProviderLabel(theme, usage, settings, modelInfo);
 
 	// If no windows, just show the provider name with error
 	if (usage.windows.length === 0) {
@@ -627,7 +630,6 @@ export function formatUsageStatus(
 	const parts: string[] = [];
 	const isCodex = usage.provider === "codex";
 	const invertUsage = isCodex && (settings?.providers.codex.invertUsage ?? false);
-	const modelInfo = resolveModelInfo(model);
 	const modelId = modelInfo?.id;
 
 	for (const w of usage.windows) {
@@ -672,7 +674,8 @@ export function formatUsageStatusWithWidth(
 ): string | undefined {
 	const labelGapFill = options?.labelGapFill ?? false;
 	const baseTextColor = resolveBaseTextColor(settings?.display.baseTextColor);
-	const label = formatProviderLabel(theme, usage, settings);
+	const modelInfo = resolveModelInfo(model);
+	const label = formatProviderLabel(theme, usage, settings, modelInfo);
 
 	// If no windows, just show the provider name with error
 	if (usage.windows.length === 0) {
@@ -707,7 +710,6 @@ export function formatUsageStatusWithWidth(
 	const windows: RateWindow[] = [];
 	const isCodex = usage.provider === "codex";
 	const invertUsage = isCodex && (settings?.providers.codex.invertUsage ?? false);
-	const modelInfo = resolveModelInfo(model);
 	const modelId = modelInfo?.id;
 
 	for (const w of usage.windows) {

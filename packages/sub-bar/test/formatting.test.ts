@@ -366,3 +366,16 @@ test("codex spark usage window labels hide model prefix", () => {
 	assert.equal(output?.includes("5h"), true);
 	assert.equal(output?.includes("Week"), true);
 });
+
+test("codex spark provider label uses Codex (Spark)", () => {
+	const settings = getDefaultSettings();
+	const usage: UsageSnapshot = {
+		provider: "codex",
+		displayName: "Codex Plan",
+		windows: [{ label: "5h", usedPercent: 3 }],
+	};
+
+	const output = formatUsageStatus(theme, usage, "gpt-5.3-codex-spark", settings);
+	assert.equal(output?.includes("Codex (Spark)"), true);
+	assert.equal(output?.includes("Codex Plan"), false);
+});
