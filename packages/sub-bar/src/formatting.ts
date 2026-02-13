@@ -30,6 +30,15 @@ export interface UsageWindowParts {
 	reset: string;
 }
 
+/**
+ * Context window usage info from the pi framework
+ */
+export interface ContextInfo {
+	tokens: number;
+	contextWindow: number;
+	percent: number;
+}
+
 type ModelInput = ModelInfo | string | undefined;
 
 function resolveModelInfo(model?: ModelInput): ModelInfo | undefined {
@@ -603,13 +612,33 @@ export function formatUsageWindowParts(
 }
 
 /**
+ * Format context window usage as a progress bar
+ */
+export function formatContextBar(
+	theme: Theme,
+	context: ContextInfo,
+	settings?: Settings,
+	options?: { barWidthOverride?: number }
+): string {
+	// Create a pseudo-RateWindow for context display
+	const contextWindow: RateWindow = {
+		label: "Ctx",
+		usedPercent: context.percent,
+		// No reset description for context
+	};
+	// Format using the same window formatting logic, but with "used" semantics (not inverted)
+	return formatUsageWindow(theme, contextWindow, false, settings, undefined, options);
+}
+
+/**
  * Format a complete usage snapshot as a usage line
  */
 export function formatUsageStatus(
 	theme: Theme,
 	usage: UsageSnapshot,
 	model?: ModelInput,
-	settings?: Settings
+	settings?: Settings,
+	context?: ContextInfo
 ): string | undefined {
 	const baseTextColor = resolveBaseTextColor(settings?.display.baseTextColor);
 	const modelInfo = resolveModelInfo(model);
@@ -631,6 +660,12 @@ export function formatUsageStatus(
 	const isCodex = usage.provider === "codex";
 	const invertUsage = isCodex && (settings?.providers.codex.invertUsage ?? false);
 	const modelId = modelInfo?.id;
+
+	// Add context bar as leftmost element if enabled
+	const showContextBar = settings?.display.showContextBar ?? false;
+	if (showContextBar && context && context.contextWindow > 0) {
+		parts.push(formatContextBar(theme, context, settings));
+	}
 
 	for (const w of usage.windows) {
 		// Skip windows that are disabled in settings
@@ -670,12 +705,15 @@ export function formatUsageStatusWithWidth(
 	width: number,
 	model?: ModelInput,
 	settings?: Settings,
-	options?: { labelGapFill?: boolean }
+	options?: { labelGapFill?: boolean },
+	context?: ContextInfo
 ): string | undefined {
 	const labelGapFill = options?.labelGapFill ?? false;
 	const baseTextColor = resolveBaseTextColor(settings?.display.baseTextColor);
 	const modelInfo = resolveModelInfo(model);
 	const label = formatProviderLabel(theme, usage, settings, modelInfo);
+	const showContextBar = settings?.display.showContextBar ?? false;
+	const hasContext = showContextBar && context && context.contextWindow > 0;
 
 	// If no windows, just show the provider name with error
 	if (usage.windows.length === 0) {
@@ -712,6 +750,16 @@ export function formatUsageStatusWithWidth(
 	const invertUsage = isCodex && (settings?.providers.codex.invertUsage ?? false);
 	const modelId = modelInfo?.id;
 
+	// Add context window as first entry if enabled
+	let contextWindowIndex = -1;
+	if (hasContext) {
+		contextWindowIndex = windows.length;
+		windows.push({
+			label: "Ctx",
+			usedPercent: context!.percent,
+		});
+	}
+
 	for (const w of usage.windows) {
 		if (!shouldShowWindow(usage, w, settings, modelInfo)) {
 			continue;
@@ -724,9 +772,23 @@ export function formatUsageStatusWithWidth(
 	const extraParts = extras.map((extra) => applyBaseTextColor(theme, baseTextColor, extra.label));
 
 	const barSpacerWidth = hasBar ? 1 : 0;
-	const baseWindowWidths = windows.map((w) =>
-		visibleWidth(formatUsageWindow(theme, w, invertUsage, settings, usage, { barWidthOverride: 0 }, modelInfo)) + barSpacerWidth
-	);
+	const baseWindowWidths = windows.map((w, i) => {
+		// Context window uses false for invertUsage (always show used percentage)
+		const isContext = i === contextWindowIndex;
+		return (
+			visibleWidth(
+				formatUsageWindow(
+					theme,
+					w,
+					isContext ? false : invertUsage,
+					settings,
+					isContext ? undefined : usage,
+					{ barWidthOverride: 0 },
+					modelInfo
+				)
+			) + barSpacerWidth
+		);
+	});
 	const extraWidths = extraParts.map((part) => visibleWidth(part));
 
 	const partCount = windows.length + extraParts.length;
@@ -817,7 +879,18 @@ export function formatUsageStatusWithWidth(
 	for (let i = 0; i < windows.length; i++) {
 		const totalWidth = barWidths[i] ?? barBaseWidthCalc;
 		const contentWidth = containBar ? Math.max(0, totalWidth - barContainerExtra) : totalWidth;
-		parts.push(formatUsageWindow(theme, windows[i], invertUsage, settings, usage, { barWidthOverride: contentWidth }, modelInfo));
+		const isContext = i === contextWindowIndex;
+		parts.push(
+			formatUsageWindow(
+				theme,
+				windows[i],
+				isContext ? false : invertUsage,
+				settings,
+				isContext ? undefined : usage,
+				{ barWidthOverride: contentWidth },
+				modelInfo
+			)
+		);
 	}
 	for (const extra of extraParts) {
 		parts.push(extra);
