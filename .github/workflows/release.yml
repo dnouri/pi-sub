@@ -61,6 +61,7 @@ jobs:
             { name: "@marckrenn/pi-sub-bar", changelog: "packages/sub-bar/CHANGELOG.md" },
             { name: "@marckrenn/pi-sub-core", changelog: "packages/sub-core/CHANGELOG.md" },
             { name: "@marckrenn/pi-sub-shared", changelog: "packages/sub-shared/CHANGELOG.md" },
+            { name: "@marckrenn/pi-sub-status", changelog: "packages/sub-status/CHANGELOG.md" },
           ];
 
           function extractSection(changelogPath) {
