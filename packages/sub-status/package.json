@@ -1,0 +1,39 @@
+{
+  "name": "@marckrenn/pi-sub-status",
+  "version": "1.3.0",
+  "description": "Compact status-line client for pi subscription usage",
+  "keywords": [
+    "pi-package"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts",
+      "node_modules/@marckrenn/pi-sub-core/index.ts",
+      "../pi-sub-core/index.ts"
+    ]
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "check:watch": "tsc --noEmit --watch",
+    "test": "tsx test/all.test.ts",
+    "test:watch": "tsx watch test/all.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.0"
+  },
+  "dependencies": {
+    "@marckrenn/pi-sub-core": "^1.3.0",
+    "@marckrenn/pi-sub-shared": "^1.3.0"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*"
+  }
+}
