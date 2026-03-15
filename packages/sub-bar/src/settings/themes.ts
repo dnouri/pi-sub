@@ -116,6 +116,12 @@ export function buildDisplayThemeItems(
 		description: "compact display",
 		tooltip: "Apply the default minimal theme.",
 	});
+	items.push({
+		value: "default-footer",
+		label: "Default Footer",
+		description: "status-line optimized default footer style",
+		tooltip: "Apply a compact footer-style layout.",
+	});
 	for (const theme of settings.displayThemes) {
 		const description = theme.source === "imported" ? "manually imported theme" : "manually saved theme";
 		items.push({
@@ -140,6 +146,23 @@ export function resolveDisplayThemeTarget(
 	}
 	if (value === "default") {
 		return { name: "Default", display: { ...defaults.display }, deletable: false };
+	}
+	if (value === "default-footer") {
+		return {
+			name: "Default Footer",
+			display: {
+				...defaults.display,
+				alignment: "left",
+				barWidth: 4,
+				showUsageLabels: false,
+				statusIndicatorMode: "icon+text",
+				statusProviderDivider: true,
+				showProviderName: false,
+				statusLeadingDivider: true,
+				widgetPlacement: "status",
+			},
+			deletable: false,
+		};
 	}
 	if (value === "minimal") {
 		return {
@@ -174,7 +197,7 @@ export function resolveDisplayThemeTarget(
 				providerLabelColon: false,
 				providerLabelBold: true,
 				baseTextColor: "muted",
-				backgroundColor: "text",
+				backgroundColor: "none",
 				showWindowTitle: false,
 				boldWindowTitle: true,
 				showUsageLabels: false,
@@ -182,11 +205,13 @@ export function resolveDisplayThemeTarget(
 				dividerColor: "dim",
 				dividerBlanks: 1,
 				showProviderDivider: true,
+				statusLeadingDivider: false,
+				statusTrailingDivider: false,
 				dividerFooterJoin: true,
 				showTopDivider: false,
 				showBottomDivider: false,
 				paddingLeft: 1,
-			paddingRight: 1,
+				paddingRight: 1,
 				widgetPlacement: "belowEditor",
 				errorThreshold: 25,
 				warningThreshold: 50,
@@ -252,12 +277,16 @@ export function buildRandomDisplay(base: DisplaySettings): DisplaySettings {
 	display.dividerColor = pickRandom(RANDOM_DIVIDER_COLORS);
 	display.dividerBlanks = pickRandom(RANDOM_DIVIDER_BLANKS);
 	display.showProviderDivider = randomBool();
+	display.statusLeadingDivider = randomBool();
+	display.statusTrailingDivider = randomBool();
 	display.dividerFooterJoin = randomBool();
 	display.showTopDivider = randomBool();
 	display.showBottomDivider = randomBool();
 
 	if (display.dividerCharacter === "none") {
 		display.showProviderDivider = false;
+		display.statusLeadingDivider = false;
+		display.statusTrailingDivider = false;
 		display.dividerFooterJoin = false;
 		display.showTopDivider = false;
 		display.showBottomDivider = false;

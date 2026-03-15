@@ -4,9 +4,15 @@ import type { Theme } from "@mariozechner/pi-coding-agent";
 import { visibleWidth } from "@mariozechner/pi-tui";
 import { formatUsageStatus, formatUsageWindowParts } from "../src/formatting.js";
 import { buildDisplayShareString, decodeDisplayShareString } from "../src/share.js";
-import { applyDisplayChange } from "../src/settings/display.js";
-import { buildDisplayThemeItems, saveDisplayTheme, upsertDisplayTheme } from "../src/settings/themes.js";
-import { getDefaultSettings, resolveBaseTextColor } from "../src/settings-types.js";
+import {
+	applyDisplayChange,
+	buildDisplayBarItems,
+	buildDisplayColorItems,
+	buildDisplayDividerItems,
+	buildDisplayLayoutItems,
+} from "../src/settings/display.js";
+import { buildDisplayThemeItems, resolveDisplayThemeTarget, saveDisplayTheme, upsertDisplayTheme } from "../src/settings/themes.js";
+import { getDefaultSettings, mergeSettings, resolveBaseTextColor } from "../src/settings-types.js";
 import type { UsageSnapshot } from "../src/types.js";
 
 const theme = {
@@ -106,6 +112,14 @@ test("share string preserves custom values and tolerates unknown colors", () => 
 	assert.equal(resolveBaseTextColor(decoded?.display.baseTextColor), "dim");
 });
 
+
+
+test("theme list includes Default Footer preset", () => {
+	const items = buildDisplayThemeItems(getDefaultSettings());
+	const footerThemeItem = items.find((item) => item.value === "default-footer");
+	assert.equal(footerThemeItem?.label, "Default Footer");
+});
+
 test("theme source labels imported vs saved", () => {
 	const settings = getDefaultSettings();
 	upsertDisplayTheme(settings, "Imported", settings.display, "imported");
@@ -170,6 +184,20 @@ test("applyDisplayChange supports fill and numeric values", () => {
 	assert.equal(settings.display.dividerBlanks, 3);
 });
 
+test("background color accepts none", () => {
+	const settings = getDefaultSettings();
+	applyDisplayChange(settings, "backgroundColor", "none");
+	assert.equal(settings.display.backgroundColor, "none");
+});
+
+test("display color items include none for background", () => {
+	const settings = getDefaultSettings();
+	const items = buildDisplayColorItems(settings);
+	const backgroundItem = items.find((item) => item.id === "backgroundColor");
+	assert.ok(backgroundItem);
+	assert.ok(backgroundItem.values?.includes("none"));
+});
+
 test("status icon pack parsing handles preview labels", () => {
 	const settings = getDefaultSettings();
 
@@ -206,6 +234,96 @@ test("applyDisplayChange accepts custom reset containment", () => {
 	const settings = getDefaultSettings();
 	applyDisplayChange(settings, "resetTimeContainment", "{}");
 	assert.equal(settings.display.resetTimeContainment, "{}");
+});
+
+test("layout items expose aboveEditor and hide status-only layout controls", () => {
+	const settings = getDefaultSettings();
+
+	let items = buildDisplayLayoutItems(settings);
+	const placementItem = items.find((item) => item.id === "widgetPlacement");
+	assert.deepEqual(placementItem?.values, ["aboveEditor", "belowEditor", "status"]);
+
+	settings.display.widgetPlacement = "status";
+	items = buildDisplayLayoutItems(settings);
+	assert.ok(!items.some((item) => item.id === "alignment"));
+	assert.ok(!items.some((item) => item.id === "overflow"));
+	assert.ok(items.some((item) => item.id === "paddingLeft"));
+	assert.ok(!items.some((item) => item.id === "paddingRight"));
+});
+
+test("status placement hides fill width option", () => {
+	const settings = getDefaultSettings();
+	settings.display.widgetPlacement = "status";
+
+	const items = buildDisplayBarItems(settings);
+	const barWidthItem = items.find((item) => item.id === "barWidth");
+	assert.ok(barWidthItem);
+	assert.ok(!(barWidthItem?.values ?? []).includes("fill"));
+});
+
+test("divider items switch between widget and status placement options", () => {
+	const settings = getDefaultSettings();
+
+	let items = buildDisplayDividerItems(settings);
+	assert.ok(items.some((item) => item.id === "showTopDivider"));
+	assert.ok(items.some((item) => item.id === "showBottomDivider"));
+	assert.ok(!items.some((item) => item.id === "statusLeadingDivider"));
+
+	settings.display.widgetPlacement = "status";
+	items = buildDisplayDividerItems(settings);
+	assert.ok(!items.some((item) => item.id === "showTopDivider"));
+	assert.ok(!items.some((item) => item.id === "showBottomDivider"));
+	assert.ok(items.some((item) => item.id === "statusLeadingDivider"));
+	assert.ok(items.some((item) => item.id === "statusTrailingDivider"));
+});
+
+test("applyDisplayChange toggles status edge dividers", () => {
+	const settings = getDefaultSettings();
+	applyDisplayChange(settings, "statusLeadingDivider", "on");
+	applyDisplayChange(settings, "statusTrailingDivider", "on");
+	assert.equal(settings.display.statusLeadingDivider, true);
+	assert.equal(settings.display.statusTrailingDivider, true);
+});
+
+
+
+
+
+test("Default Footer preset applies footer defaults", () => {
+	const defaults = getDefaultSettings();
+	const target = resolveDisplayThemeTarget("default-footer", defaults, defaults, null);
+	assert.ok(target);
+	assert.equal(target?.name, "Default Footer");
+	assert.equal(target?.display.widgetPlacement, "status");
+	assert.equal(target?.display.statusIndicatorMode, "icon+text");
+	assert.equal(target?.display.barWidth, 4);
+	assert.equal(target?.deletable, false);
+});
+test("default widget placement stays belowEditor", () => {
+	const settings = getDefaultSettings();
+	assert.equal(settings.display.widgetPlacement, "belowEditor");
+});
+
+test("status placement normalizes alignment and overflow to line-mode defaults", () => {
+	const settings = mergeSettings({
+		display: {
+			widgetPlacement: "status",
+			alignment: "center",
+			overflow: "wrap",
+		} as any,
+	} as any);
+	assert.equal(settings.display.widgetPlacement, "status");
+	assert.equal(settings.display.alignment, "left");
+	assert.equal(settings.display.overflow, "truncate");
+});
+
+test("invalid widget placement falls back to belowEditor", () => {
+	const settings = mergeSettings({
+		display: {
+			widgetPlacement: "invalid",
+		} as any,
+	} as any);
+	assert.equal(settings.display.widgetPlacement, "belowEditor");
 });
 
 test("decodeDisplayShareString rejects invalid payloads", () => {

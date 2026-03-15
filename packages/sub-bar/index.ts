@@ -10,8 +10,8 @@ import * as fs from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ProviderName, ProviderUsageEntry, SubCoreAllState, SubCoreState, UsageSnapshot } from "./src/types.js";
-import { type Settings, type BaseTextColor } from "./src/settings-types.js";
-import { isBackgroundColor, resolveBaseTextColor, resolveDividerColor } from "./src/settings-types.js";
+import { type Settings, type BaseTextColor, type WidgetBackgroundColor } from "./src/settings-types.js";
+import { isBackgroundColor, resolveBackgroundColor, resolveBaseTextColor, resolveDividerColor } from "./src/settings-types.js";
 import { buildDividerLine } from "./src/dividers.js";
 import type { CoreSettings } from "@marckrenn/pi-sub-shared";
 import type { KeyId } from "@mariozechner/pi-tui";
@@ -40,7 +40,8 @@ type SubCoreAction = {
 	force?: boolean;
 };
 
-function applyBackground(lines: string[], theme: Theme, color: BaseTextColor, width: number): string[] {
+function applyBackground(lines: string[], theme: Theme, color: WidgetBackgroundColor, width: number): string[] {
+	if (color === "none") return lines;
 	const bgAnsi = isBackgroundColor(color)
 		? theme.getBgAnsi(color as Parameters<Theme["getBgAnsi"]>[0])
 		: theme.getFgAnsi(resolveDividerColor(color)).replace(/\x1b\[38;/g, "\x1b[48;").replace(/\x1b\[39m/g, "\x1b[49m");
@@ -471,12 +472,17 @@ export default function createExtension(pi: ExtensionAPI) {
 		usage: UsageSnapshot | undefined,
 		contentWidth: number,
 		message?: string,
-		options?: { forceNoFill?: boolean }
+		options?: { forceNoFill?: boolean; forceLeftAlignment?: boolean; forceOverflow?: "truncate" | "wrap"; useStatusSafePadding?: boolean }
 	): string[] {
 		const paddingLeft = settings.display.paddingLeft ?? 0;
-		const paddingRight = settings.display.paddingRight ?? 0;
-		const innerWidth = Math.max(1, contentWidth - paddingLeft - paddingRight);
-		const alignment = settings.display.alignment ?? "left";
+		const configuredPaddingRight = settings.display.paddingRight ?? 0;
+		const useStatusSafePadding = options?.useStatusSafePadding ?? false;
+		const resolvedPaddingRight = useStatusSafePadding ? 0 : configuredPaddingRight;
+		const innerWidth = Math.max(1, contentWidth - paddingLeft - resolvedPaddingRight);
+		const configuredAlignment = settings.display.alignment ?? "left";
+		const alignment = options?.forceLeftAlignment ? "left" : configuredAlignment;
+		const configuredOverflow = settings.display.overflow ?? "truncate";
+		const overflow = options?.forceOverflow ?? configuredOverflow;
 		const configuredHasFill = settings.display.barWidth === "fill" || settings.display.dividerBlanks === "fill";
 		const hasFill = options?.forceNoFill ? false : configuredHasFill;
 		const wantsSplit = options?.forceNoFill ? false : alignment === "split";
@@ -513,20 +519,50 @@ export default function createExtension(pi: ExtensionAPI) {
 		let lines: string[] = [];
 		if (!formatted) {
 			lines = [];
-		} else if (settings.display.overflow === "wrap") {
+		} else if (overflow === "wrap") {
 			lines = wrapTextWithAnsi(formatted, innerWidth).map(alignLine);
 		} else {
 			const trimmed = alignLine(truncateToWidth(formatted, innerWidth, theme.fg("dim", "...")));
 			lines = [trimmed];
 		}
 
-		if (paddingLeft > 0 || paddingRight > 0) {
-			const leftPad = " ".repeat(paddingLeft);
-			const rightPad = " ".repeat(paddingRight);
+		const effectivePaddingLeft = paddingLeft;
+		const effectivePaddingRight = useStatusSafePadding ? 0 : configuredPaddingRight;
+		if (effectivePaddingLeft > 0 || effectivePaddingRight > 0) {
+			const buildStatusSafePadding = (count: number) => {
+				const zeroWidth = "\u200B";
+				if (count <= 0) return "";
+				let out = "";
+				for (let i = 0; i < count; i++) {
+					out += " ";
+					out += zeroWidth;
+				}
+				if (count > 0) {
+					out += zeroWidth;
+				}
+				return out;
+			};
+			const leftPad = useStatusSafePadding
+				? buildStatusSafePadding(effectivePaddingLeft)
+				: " ".repeat(effectivePaddingLeft);
+			const rightPad = useStatusSafePadding
+				? ""
+				: " ".repeat(effectivePaddingRight);
 			lines = lines.map((line) => `${leftPad}${line}${rightPad}`);
 		}
 
 		return lines;
+	}
+
+	function buildStatusEdgeDivider(theme: Theme): string {
+		const dividerChar = settings.display.dividerCharacter ?? "│";
+		if (dividerChar === "none") return "";
+		const dividerColor: ThemeColor = resolveDividerColor(settings.display.dividerColor);
+		const dividerGlyph = dividerChar === "blank" ? " " : dividerChar;
+		if (!dividerGlyph) return "";
+		const blanks = typeof settings.display.dividerBlanks === "number" ? settings.display.dividerBlanks : 1;
+		const spacing = " ".repeat(Math.max(0, blanks));
+		return `${spacing}${theme.fg(dividerColor, dividerGlyph)}${spacing}`;
 	}
 
 	function renderUsageWidget(ctx: ExtensionContext, usage: UsageSnapshot | undefined, message?: string): void {
@@ -534,12 +570,51 @@ export default function createExtension(pi: ExtensionAPI) {
 			return;
 		}
 
+		const placement = settings.display.widgetPlacement ?? "belowEditor";
 
+		if (placement === "status") {
+			ctx.ui.setWidget("usage", undefined);
+			if (!usage && !message) {
+				ctx.ui.setStatus("sub-bar", "");
+				return;
+			}
+			const theme = ctx.ui.theme;
+			const terminalWidth = process.stdout.columns || 80;
+			// In status-line placement we must not use fill-based layouts (they assume full terminal width).
+			// The Pi footer concatenates *all* extension statuses onto one line and then truncates,
+			// so we render at natural width here to avoid padding that would overflow when other
+			// status hooks are present.
+			const lines = formatUsageContent(ctx, theme, usage, terminalWidth, message, {
+				forceNoFill: true,
+				forceLeftAlignment: true,
+				forceOverflow: "truncate",
+				useStatusSafePadding: true,
+			});
+			if (lines.length === 0) {
+				ctx.ui.setStatus("sub-bar", "");
+				return;
+			}
+			let statusLine = lines.join(" ");
+			const edgeDivider = buildStatusEdgeDivider(theme);
+			if (edgeDivider) {
+				if (settings.display.statusLeadingDivider) {
+					statusLine = `${edgeDivider}${statusLine}`;
+				}
+				if (settings.display.statusTrailingDivider) {
+					statusLine = `${statusLine}${edgeDivider}`;
+				}
+			}
+			ctx.ui.setStatus("sub-bar", truncateToWidth(statusLine, terminalWidth, theme.fg("dim", "...")));
+			return;
+		}
+
+		ctx.ui.setStatus("sub-bar", "");
 		if (!usage && !message) {
 			ctx.ui.setWidget("usage", undefined);
 			return;
 		}
 
+		const widgetPlacement = placement === "aboveEditor" ? "aboveEditor" : "belowEditor";
 		const setWidgetWithPlacement = (ctx.ui as unknown as { setWidget: (...args: unknown[]) => void }).setWidget;
 		setWidgetWithPlacement(
 			"usage",
@@ -570,12 +645,12 @@ export default function createExtension(pi: ExtensionAPI) {
 						lines = [...lines, footerLine];
 					}
 
-					const backgroundColor = resolveBaseTextColor(settings.display.backgroundColor);
+					const backgroundColor = resolveBackgroundColor(settings.display.backgroundColor);
 					return applyBackground(lines, theme, backgroundColor, safeWidth);
 				},
 				invalidate() {},
 			}),
-			{ placement: "belowEditor" },
+			{ placement: widgetPlacement },
 		);
 	}
 

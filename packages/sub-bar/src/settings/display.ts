@@ -16,23 +16,39 @@ import type {
 	DividerBlanks,
 	ProviderLabel,
 	BaseTextColor,
+	WidgetBackgroundColor,
 	ResetTimeFormat,
 	ResetTimerContainment,
 	StatusIndicatorMode,
 	StatusIconPack,
 	DividerColor,
 	UsageColorTargets,
+	WidgetPlacement,
 } from "../settings-types.js";
 import {
 	BASE_COLOR_OPTIONS,
+	WIDGET_BACKGROUND_OPTIONS,
 	DIVIDER_COLOR_OPTIONS,
 	normalizeBaseTextColor,
+	normalizeBackgroundColor,
 	normalizeDividerColor,
 } from "../settings-types.js";
 import { CUSTOM_OPTION } from "../ui/settings-list.js";
 
+function isStatusLinePlacement(settings: Settings): boolean {
+	return (settings.display.widgetPlacement ?? "belowEditor") === "status";
+}
+
 export function buildDisplayLayoutItems(settings: Settings): SettingItem[] {
-	return [
+	const statusPlacement = isStatusLinePlacement(settings);
+	const items: SettingItem[] = [
+		{
+			id: "widgetPlacement",
+			label: "Widget Placement",
+			currentValue: settings.display.widgetPlacement ?? "belowEditor",
+			values: ["aboveEditor", "belowEditor", "status"] as WidgetPlacement[],
+			description: "Show as widget above/below editor (3 lines) or compact in footer status line (1 line).",
+		},
 		{
 			id: "showContextBar",
 			label: "Show Context Bar",
@@ -40,35 +56,48 @@ export function buildDisplayLayoutItems(settings: Settings): SettingItem[] {
 			values: ["on", "off"],
 			description: "Show context window usage as leftmost progress bar.",
 		},
-		{
-			id: "alignment",
-			label: "Alignment",
-			currentValue: settings.display.alignment,
-			values: ["left", "center", "right", "split"] as DisplayAlignment[],
-			description: "Align the usage line inside the widget.",
-		},
-		{
-			id: "overflow",
-			label: "Overflow",
-			currentValue: settings.display.overflow,
-			values: ["truncate", "wrap"] as WidgetWrapping[],
-			description: "Wrap the usage line or truncate with ellipsis (requires bar width ≠ fill and alignment ≠ split).",
-		},
-		{
-			id: "paddingLeft",
-			label: "Padding Left",
-			currentValue: String(settings.display.paddingLeft ?? 0),
-			values: ["0", "1", "2", "3", "4", CUSTOM_OPTION],
-			description: "Add left padding inside the widget.",
-		},
-		{
+	];
+
+	if (!statusPlacement) {
+		items.push(
+			{
+				id: "alignment",
+				label: "Alignment",
+				currentValue: settings.display.alignment,
+				values: ["left", "center", "right", "split"] as DisplayAlignment[],
+				description: "Align the usage line inside the widget.",
+			},
+			{
+				id: "overflow",
+				label: "Overflow",
+				currentValue: settings.display.overflow,
+				values: ["truncate", "wrap"] as WidgetWrapping[],
+				description: "Wrap the usage line or truncate with ellipsis (requires bar width ≠ fill and alignment ≠ split).",
+			},
+		);
+	}
+
+	items.push({
+		id: "paddingLeft",
+		label: "Padding Left",
+		currentValue: String(settings.display.paddingLeft ?? 0),
+		values: ["0", "1", "2", "3", "4", CUSTOM_OPTION],
+		description: statusPlacement
+			? "Add left padding inside the compact status line."
+			: "Add left padding inside the widget.",
+	});
+
+	if (!statusPlacement) {
+		items.push({
 			id: "paddingRight",
 			label: "Padding Right",
 			currentValue: String(settings.display.paddingRight ?? 0),
 			values: ["0", "1", "2", "3", "4", CUSTOM_OPTION],
 			description: "Add right padding inside the widget.",
-		},
-	];
+		});
+	}
+
+	return items;
 }
 
 export function buildDisplayResetItems(settings: Settings): SettingItem[] {
@@ -174,8 +203,8 @@ export function buildDisplayColorItems(settings: Settings): SettingItem[] {
 		{
 			id: "backgroundColor",
 			label: "Background Color",
-			currentValue: normalizeBaseTextColor(settings.display.backgroundColor),
-			values: [...BASE_COLOR_OPTIONS] as BaseTextColor[],
+			currentValue: normalizeBackgroundColor(settings.display.backgroundColor),
+			values: [...WIDGET_BACKGROUND_OPTIONS] as WidgetBackgroundColor[],
 			description: "Background color for the widget line.",
 		},
 		{
@@ -220,6 +249,10 @@ export function buildDisplayColorItems(settings: Settings): SettingItem[] {
 }
 
 export function buildDisplayBarItems(settings: Settings): SettingItem[] {
+	const statusPlacement = isStatusLinePlacement(settings);
+	const barWidthValues = statusPlacement
+		? (["1", "4", "6", "8", "10", "12", CUSTOM_OPTION] as string[])
+		: (["1", "4", "6", "8", "10", "12", "fill", CUSTOM_OPTION] as string[]);
 	const items: SettingItem[] = [
 		{
 			id: "barType",
@@ -251,8 +284,10 @@ export function buildDisplayBarItems(settings: Settings): SettingItem[] {
 			id: "barWidth",
 			label: "Bar Width",
 			currentValue: String(settings.display.barWidth),
-			values: ["1", "4", "6", "8", "10", "12", "fill", CUSTOM_OPTION],
-			description: "Set the bar width or fill available space.",
+			values: barWidthValues,
+			description: statusPlacement
+				? "Set the bar width (fill is unavailable in status-line placement)."
+				: "Set the bar width or fill available space.",
 		},
 		{
 			id: "containBar",
@@ -430,7 +465,8 @@ export function buildDisplayStatusItems(settings: Settings): SettingItem[] {
 }
 
 export function buildDisplayDividerItems(settings: Settings): SettingItem[] {
-	return [
+	const statusPlacement = isStatusLinePlacement(settings);
+	const commonItems: SettingItem[] = [
 		{
 			id: "dividerCharacter",
 			label: "Divider Character",
@@ -466,6 +502,30 @@ export function buildDisplayDividerItems(settings: Settings): SettingItem[] {
 			values: ["on", "off"],
 			description: "Show the divider after the provider label.",
 		},
+	];
+
+	if (statusPlacement) {
+		return [
+			...commonItems,
+			{
+				id: "statusLeadingDivider",
+				label: "Status Leading Divider",
+				currentValue: settings.display.statusLeadingDivider ? "on" : "off",
+				values: ["on", "off"],
+				description: "Add a divider before the status-line output.",
+			},
+			{
+				id: "statusTrailingDivider",
+				label: "Status Trailing Divider",
+				currentValue: settings.display.statusTrailingDivider ? "on" : "off",
+				values: ["on", "off"],
+				description: "Add a divider after the status-line output.",
+			},
+		];
+	}
+
+	return [
+		...commonItems,
 		{
 			id: "showTopDivider",
 			label: "Show Top Divider",
@@ -487,7 +547,6 @@ export function buildDisplayDividerItems(settings: Settings): SettingItem[] {
 			values: ["on", "off"],
 			description: "Draw reverse-T connectors for top/bottom dividers.",
 		},
-
 	];
 }
 
@@ -629,7 +688,7 @@ export function applyDisplayChange(settings: Settings, id: string, value: string
 			settings.display.baseTextColor = normalizeBaseTextColor(value);
 			break;
 		case "backgroundColor":
-			settings.display.backgroundColor = normalizeBaseTextColor(value);
+			settings.display.backgroundColor = normalizeBackgroundColor(value);
 			break;
 		case "showUsageLabels":
 			settings.display.showUsageLabels = value === "on";
@@ -639,6 +698,9 @@ export function applyDisplayChange(settings: Settings, id: string, value: string
 			break;
 		case "boldWindowTitle":
 			settings.display.boldWindowTitle = value === "on";
+			break;
+		case "widgetPlacement":
+			settings.display.widgetPlacement = value as WidgetPlacement;
 			break;
 		case "showContextBar":
 			settings.display.showContextBar = value === "on";
@@ -676,6 +738,12 @@ export function applyDisplayChange(settings: Settings, id: string, value: string
 		}
 		case "showProviderDivider":
 			settings.display.showProviderDivider = value === "on";
+			break;
+		case "statusLeadingDivider":
+			settings.display.statusLeadingDivider = value === "on";
+			break;
+		case "statusTrailingDivider":
+			settings.display.statusTrailingDivider = value === "on";
 			break;
 		case "dividerFooterJoin":
 			settings.display.dividerFooterJoin = value === "on";

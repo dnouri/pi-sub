@@ -53,7 +53,7 @@ export type WidgetWrapping = OverflowMode;
 /**
  * Widget placement
  */
-export type WidgetPlacement = "belowEditor";
+export type WidgetPlacement = "aboveEditor" | "belowEditor" | "status";
 
 /**
  * Alignment for the widget
@@ -135,6 +135,13 @@ export const BASE_COLOR_OPTIONS = [...DIVIDER_COLOR_OPTIONS, ...BACKGROUND_COLOR
  */
 export type BaseTextColor = (typeof BASE_COLOR_OPTIONS)[number];
 
+/**
+ * Background options for the widget line.
+ */
+export const WIDGET_BACKGROUND_OPTIONS = ["none", ...BASE_COLOR_OPTIONS] as const;
+
+export type WidgetBackgroundColor = (typeof WIDGET_BACKGROUND_OPTIONS)[number];
+
 export function normalizeDividerColor(value?: string): DividerColor {
 	if (!value) return "borderMuted";
 	if (value === "accent" || value === "primary") return "primary";
@@ -177,8 +184,21 @@ export function normalizeBaseTextColor(value?: string): BaseTextColor {
 	return "dim";
 }
 
+export function normalizeBackgroundColor(value?: string): WidgetBackgroundColor {
+	if (!value || value === "none" || value === "transparent") return "none";
+	if (value === "accent" || value === "primary") return "primary";
+	if ((BASE_COLOR_OPTIONS as readonly string[]).includes(value)) {
+		return value as BaseTextColor;
+	}
+	return "none";
+}
+
 export function resolveBaseTextColor(value?: string): BaseTextColor {
 	return normalizeBaseTextColor(value);
+}
+
+export function resolveBackgroundColor(value?: string): WidgetBackgroundColor {
+	return normalizeBackgroundColor(value);
 }
 
 /**
@@ -330,7 +350,7 @@ export interface DisplaySettings {
 	/** Base text color for widget labels */
 	baseTextColor: BaseTextColor;
 	/** Background color for the widget line */
-	backgroundColor: BaseTextColor;
+	backgroundColor: WidgetBackgroundColor;
 	/** Show window titles (5h, Week, etc.) */
 	showWindowTitle: boolean;
 	/** Bold window titles (5h, Week, etc.) */
@@ -345,6 +365,10 @@ export interface DisplaySettings {
 	dividerBlanks: DividerBlanks;
 	/** Show divider between provider label and usage */
 	showProviderDivider: boolean;
+	/** Show leading divider in status-line placement */
+	statusLeadingDivider: boolean;
+	/** Show trailing divider in status-line placement */
+	statusTrailingDivider: boolean;
 	/** Connect divider glyphs to the bottom divider line */
 	dividerFooterJoin: boolean;
 	/** Show divider line above the bar */
@@ -495,7 +519,7 @@ export function getDefaultSettings(): Settings {
 			providerLabelColon: false,
 			providerLabelBold: true,
 			baseTextColor: "muted",
-			backgroundColor: "text",
+			backgroundColor: "none",
 			showWindowTitle: true,
 			boldWindowTitle: true,
 			showUsageLabels: true,
@@ -503,6 +527,8 @@ export function getDefaultSettings(): Settings {
 			dividerColor: "dim",
 			dividerBlanks: 1,
 			showProviderDivider: true,
+			statusLeadingDivider: false,
+			statusTrailingDivider: false,
 			dividerFooterJoin: true,
 			showTopDivider: false,
 			showBottomDivider: true,
@@ -575,9 +601,27 @@ export function mergeSettings(loaded: Partial<Settings>): Settings {
 	return deepMerge(getDefaultSettings(), migrated);
 }
 
+const WIDGET_PLACEMENTS = ["aboveEditor", "belowEditor", "status"] as const;
+
+function coerceWidgetPlacement(raw?: unknown): WidgetPlacement | undefined {
+	if (typeof raw !== "string") return undefined;
+	if ((WIDGET_PLACEMENTS as readonly string[]).includes(raw)) {
+		return raw as WidgetPlacement;
+	}
+	return undefined;
+}
+
 function migrateDisplaySettings(display?: Partial<DisplaySettings> | null): void {
 	if (!display) return;
 	const displayAny = display as Partial<DisplaySettings> & { widgetWrapping?: OverflowMode; paddingX?: number };
+	const normalizedPlacement = coerceWidgetPlacement(displayAny.widgetPlacement);
+	if (displayAny.widgetPlacement !== undefined) {
+		displayAny.widgetPlacement = normalizedPlacement ?? "belowEditor";
+	}
+	if (displayAny.widgetPlacement === "status") {
+		displayAny.alignment = "left";
+		displayAny.overflow = "truncate";
+	}
 	if (displayAny.widgetWrapping !== undefined && displayAny.overflow === undefined) {
 		displayAny.overflow = displayAny.widgetWrapping;
 	}

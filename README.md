@@ -6,16 +6,18 @@ Monorepo for the `sub-*` extension ecosystem: a shared usage core (`sub-core`), 
 
 - **sub-core**: fetches usage + status, manages cache/locks, owns provider selection, and emits updates via `pi.events`.
 - **sub-bar**: UI widget that renders the current usage state above the editor.
+- **sub-status**: compact status-line client that renders the current usage state via `ctx.ui.setStatus(...)`.
 - **sub-shared**: shared types + event contract (published to npm as `@marckrenn/pi-sub-shared`).
 
-`sub-core` can power multiple `sub-*` extensions at once (some with UI, some headless).
+`sub-core` can power multiple `sub-*` extensions at once, including rich UI clients like `sub-bar` and compact/headless-friendly clients like `sub-status`.
 
 ## Packages
 
 | Package | Description |
 | --- | --- |
 | [`@marckrenn/pi-sub-core`](./packages/sub-core) | Shared fetch/cache core (pi extension). |
-| [`@marckrenn/pi-sub-bar`](./packages/sub-bar) | UI display client (pi extension). |
+| [`@marckrenn/pi-sub-bar`](./packages/sub-bar) | Rich widget display client (pi extension). |
+| [`@marckrenn/pi-sub-status`](./packages/sub-status) | Compact status-line display client (pi extension). |
 | [`@marckrenn/pi-sub-shared`](./packages/sub-shared) | Shared types + event contract (npm package). |
 
 ## Ideas / planned sub-* extensions
@@ -40,30 +42,35 @@ You can install the packages via `pi install`:
 ```bash
 pi install npm:@marckrenn/pi-sub-core
 pi install npm:@marckrenn/pi-sub-bar
+pi install npm:@marckrenn/pi-sub-status
 ```
+
+`sub-bar` remains the default rich UI path. `sub-status` is an explicit opt-in compact client and can be installed alongside `sub-bar` when you want both the widget and a status-line summary.
 
 ## Quick Start (manual install)
 
 ```bash
 git clone https://github.com/marckrenn/pi-sub.git
 
-# Enable extensions
-ln -s /path/to/pi-sub/packages/sub-core ~/.pi/agent/extensions/sub-core
-ln -s /path/to/pi-sub/packages/sub-bar  ~/.pi/agent/extensions/sub-bar
+# Enable the shared core plus one or both display clients
+ln -s /path/to/pi-sub/packages/sub-core   ~/.pi/agent/extensions/sub-core
+ln -s /path/to/pi-sub/packages/sub-bar    ~/.pi/agent/extensions/sub-bar
+ln -s /path/to/pi-sub/packages/sub-status ~/.pi/agent/extensions/sub-status
 ```
 
-Alternative (no symlink): add both to `~/.pi/agent/settings.json`:
+Alternative (no symlink): add the core plus whichever clients you want to `~/.pi/agent/settings.json`:
 
 ```json
 {
   "extensions": [
     "/path/to/pi-sub/packages/sub-core/index.ts",
-    "/path/to/pi-sub/packages/sub-bar/index.ts"
+    "/path/to/pi-sub/packages/sub-bar/index.ts",
+    "/path/to/pi-sub/packages/sub-status/index.ts"
   ]
 }
 ```
 
-> You only install `sub-core` + `sub-bar`. `sub-shared` is an npm dependency and is pulled automatically.
+> `sub-shared` is an npm dependency and is pulled automatically. `sub-bar` and `sub-status` are both optional clients on top of `sub-core`.
 
 ## Communication model (core ↔ clients)
 
@@ -93,7 +100,7 @@ Why: awaiting fetches inside `pi.on("session_start")` / `pi.on("model_select")` 
 - `sub-core:settings:patch` → `{ patch }` (persists core settings)
 - `sub-core:action` → `{ type: "refresh" | "cycleProvider", force? }`
 
-UI extensions like `sub-bar` listen for updates and render the current provider state.
+UI extensions like `sub-bar` and compact clients like `sub-status` listen for updates and render the current provider state in their own format.
 
 ## Settings & Cache
 
@@ -166,7 +173,7 @@ npm install
 Common commands:
 
 - `npm run check` — typecheck all workspaces
-- `npm run test` — run workspace tests (sub-bar + sub-core)
+- `npm run test` — run workspace tests (sub-bar + sub-core + sub-status)
 - `npm run lint` / `npm run lint:fix` — lint TypeScript
 - `npm run format` — format with Prettier
 - `npm run verify` — run check + test + lint
@@ -176,8 +183,10 @@ Watch mode:
 ```bash
 npm run check:watch -w @marckrenn/pi-sub-core
 npm run check:watch -w @marckrenn/pi-sub-bar
+npm run check:watch -w @marckrenn/pi-sub-status
 npm run check:watch -w @marckrenn/pi-sub-shared
 npm run test:watch -w @marckrenn/pi-sub-bar
+npm run test:watch -w @marckrenn/pi-sub-status
 ```
 
 Workspace-specific commands:
@@ -185,9 +194,11 @@ Workspace-specific commands:
 ```bash
 npm run check -w @marckrenn/pi-sub-core
 npm run check -w @marckrenn/pi-sub-bar
+npm run check -w @marckrenn/pi-sub-status
 npm run check -w @marckrenn/pi-sub-shared
 npm run test -w @marckrenn/pi-sub-core
 npm run test -w @marckrenn/pi-sub-bar
+npm run test -w @marckrenn/pi-sub-status
 ```
 
 
