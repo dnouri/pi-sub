@@ -7,6 +7,7 @@ import { buildDisplayShareString, decodeDisplayShareString } from "../src/share.
 import {
 	applyDisplayChange,
 	buildDisplayBarItems,
+	buildDisplayColorItems,
 	buildDisplayDividerItems,
 	buildDisplayLayoutItems,
 } from "../src/settings/display.js";
@@ -181,6 +182,20 @@ test("applyDisplayChange supports fill and numeric values", () => {
 	assert.equal(settings.display.dividerBlanks, "fill");
 	applyDisplayChange(settings, "dividerBlanks", "3");
 	assert.equal(settings.display.dividerBlanks, 3);
+});
+
+test("background color accepts none", () => {
+	const settings = getDefaultSettings();
+	applyDisplayChange(settings, "backgroundColor", "none");
+	assert.equal(settings.display.backgroundColor, "none");
+});
+
+test("display color items include none for background", () => {
+	const settings = getDefaultSettings();
+	const items = buildDisplayColorItems(settings);
+	const backgroundItem = items.find((item) => item.id === "backgroundColor");
+	assert.ok(backgroundItem);
+	assert.ok(backgroundItem.values?.includes("none"));
 });
 
 test("status icon pack parsing handles preview labels", () => {
