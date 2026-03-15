@@ -519,7 +519,7 @@ export function getDefaultSettings(): Settings {
 			providerLabelColon: false,
 			providerLabelBold: true,
 			baseTextColor: "muted",
-			backgroundColor: "text",
+			backgroundColor: "none",
 			showWindowTitle: true,
 			boldWindowTitle: true,
 			showUsageLabels: true,

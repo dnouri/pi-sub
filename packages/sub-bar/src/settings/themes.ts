@@ -197,7 +197,7 @@ export function resolveDisplayThemeTarget(
 				providerLabelColon: false,
 				providerLabelBold: true,
 				baseTextColor: "muted",
-				backgroundColor: "text",
+				backgroundColor: "none",
 				showWindowTitle: false,
 				boldWindowTitle: true,
 				showUsageLabels: false,
