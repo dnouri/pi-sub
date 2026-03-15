@@ -1,5 +1,34 @@
 # @marckrenn/pi-sub-bar
 
+## 1.3.1
+
+### Patch Changes
+
+- [#49](https://github.com/marckrenn/pi-sub/pull/49) [`833c19d`](https://github.com/marckrenn/pi-sub/commit/833c19db675f7c8ec7a9bb7fd04323607eb3aa1a) Thanks [@marckrenn](https://github.com/marckrenn)! - Set bundled default themes to use transparent widget background (`backgroundColor: none`) by default.
+
+  Thanks [@marckrenn](https://github.com/marckrenn) for aligning bundled defaults in this release line.
+
+- [#49](https://github.com/marckrenn/pi-sub/pull/49) [`3296415`](https://github.com/marckrenn/pi-sub/commit/3296415732cc1abb3a1687322b078931d5a142b6) Thanks [@marckrenn](https://github.com/marckrenn)! - Fix the status-line placement defaults and behavior:
+  - Keep `widgetPlacement` defaulting to `belowEditor` for merged settings state.
+  - In `widgetPlacement: "status"`, force left alignment and truncate-only overflow.
+  - Status-line placement: hide status-only alignment/overflow controls and apply compact formatting; disable right padding in footer mode where trailing spaces are not safely preservable. Left padding remains applied.
+
+  Thanks [@marckrenn](https://github.com/marckrenn) for the follow-up integration in this branch and [@pasky](https://github.com/pasky) for the original status-line work in PR [#44](https://github.com/marckrenn/pi-sub/pull/44).
+
+- [#49](https://github.com/marckrenn/pi-sub/pull/49) [`3296415`](https://github.com/marckrenn/pi-sub/commit/3296415732cc1abb3a1687322b078931d5a142b6) Thanks [@marckrenn](https://github.com/marckrenn)! - Add a new built-in **Default Footer** display theme preset, applying a status-line optimized footer layout directly from the theme picker.
+
+  Thanks [@marckrenn](https://github.com/marckrenn) for PR [#49](https://github.com/marckrenn/pi-sub/pull/49).
+
+- [#49](https://github.com/marckrenn/pi-sub/pull/49) [`5e2b792`](https://github.com/marckrenn/pi-sub/commit/5e2b792f469a934ecfdddef8f31079442e496c1f) Thanks [@marckrenn](https://github.com/marckrenn)! - Add support for a transparent widget background so users can disable background coloring when it reduces readability in their terminal theme.
+
+  This introduces an explicit `none` background choice in display settings and preserves that preference through settings updates, so the bar can render without forced background ANSI styling.
+
+  Thanks [@airtonix](https://github.com/airtonix) for implementing this in PR [#47](https://github.com/marckrenn/pi-sub/pull/47).
+
+- Updated dependencies []:
+  - @marckrenn/pi-sub-core@1.3.1
+  - @marckrenn/pi-sub-shared@1.3.1
+
 ## 1.3.0
 
 ### Minor Changes
