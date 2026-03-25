@@ -2,11 +2,11 @@ import type { Component, SettingItem, SettingsListTheme } from "@mariozechner/pi
 import {
 	Input,
 	fuzzyFilter,
-	getEditorKeybindings,
 	truncateToWidth,
 	visibleWidth,
 	wrapTextWithAnsi,
 } from "@mariozechner/pi-tui";
+import { getSettingsKeybindings } from "./keybindings.js";
 
 export interface SettingsListOptions {
 	enableSearch?: boolean;
@@ -170,7 +170,7 @@ export class SettingsList implements Component {
 			return;
 		}
 
-		const kb = getEditorKeybindings();
+		const kb = getSettingsKeybindings();
 		const displayItems = this.searchEnabled ? this.filteredItems : this.items;
 
 		if (kb.matches(data, "selectUp")) {
