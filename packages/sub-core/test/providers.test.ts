@@ -464,6 +464,55 @@ test("kimi-coding reports http errors", async () => {
 	assert.equal(usage.error?.code, "HTTP_ERROR");
 });
 
+test("kimi-coding reads token from KIMI_API_KEY env var (pi-mono convention)", async () => {
+	const provider = new KimiCodingProvider();
+	let authorization: string | undefined;
+
+	const { deps } = createDeps({
+		env: { KIMI_API_KEY: "env-token" },
+		fetch: async (_url, init) => {
+			authorization = (init as any)?.headers?.Authorization;
+			return createJsonResponse({ usage: { limit: "100", used: "10" } });
+		},
+	});
+
+	await provider.fetchUsage(deps);
+	assert.equal(authorization, "Bearer env-token");
+});
+
+test("kimi-coding reads token from pi-mono auth.json format", async () => {
+	const provider = new KimiCodingProvider();
+	let authorization: string | undefined;
+
+	const { deps, files } = createDeps({
+		fetch: async (_url, init) => {
+			authorization = (init as any)?.headers?.Authorization;
+			return createJsonResponse({ usage: { limit: "100", used: "10" } });
+		},
+	});
+	withAuth(files, { "kimi-coding": { type: "api_key", key: "file-token" } }, deps.homedir());
+
+	await provider.fetchUsage(deps);
+	assert.equal(authorization, "Bearer file-token");
+});
+
+test("kimi-coding KIMI_API_KEY env var overrides auth.json", async () => {
+	const provider = new KimiCodingProvider();
+	let authorization: string | undefined;
+
+	const { deps, files } = createDeps({
+		env: { KIMI_API_KEY: "env-token" },
+		fetch: async (_url, init) => {
+			authorization = (init as any)?.headers?.Authorization;
+			return createJsonResponse({ usage: { limit: "100", used: "10" } });
+		},
+	});
+	withAuth(files, { "kimi-coding": { type: "api_key", key: "file-token" } }, deps.homedir());
+
+	await provider.fetchUsage(deps);
+	assert.equal(authorization, "Bearer env-token");
+});
+
 test("kimi-coding reports no credentials", async () => {
 	const provider = new KimiCodingProvider();
 	const { deps } = createDeps({

@@ -10,19 +10,28 @@ import { formatReset, createTimeoutController } from "../../utils.js";
 import { API_TIMEOUT_MS } from "../../config.js";
 
 /**
- * Load Kimi for Coding token from various sources
+ * Load Kimi for Coding token from various sources.
+ *
+ * Supports both pi-mono's auth.json format (`{ type: "api_key", key: "..." }`)
+ * and legacy OAuth format (`{ access: "..." }`), plus environment variables.
  */
 function loadKimiCodingToken(deps: Dependencies): string | undefined {
-	// Explicit override via env var
-	const envToken = deps.env.KIMI_CODING_OAUTH_TOKEN?.trim();
+	// pi-mono convention
+	const envToken = deps.env.KIMI_API_KEY?.trim();
 	if (envToken) return envToken;
+
+	// Legacy pi-sub override (keep for backward compat)
+	const legacyEnvToken = deps.env.KIMI_CODING_OAUTH_TOKEN?.trim();
+	if (legacyEnvToken) return legacyEnvToken;
 
 	// Try pi auth.json next
 	const piAuthPath = path.join(deps.homedir(), ".pi", "agent", "auth.json");
 	try {
 		if (deps.fileExists(piAuthPath)) {
 			const data = JSON.parse(deps.readFile(piAuthPath) ?? "{}");
-			if (data["kimi-coding"]?.access) return data["kimi-coding"].access;
+			const entry = data["kimi-coding"];
+			if (entry?.access) return entry.access;
+			if (entry?.key) return entry.key;
 		}
 	} catch {
 		// Ignore parse errors
