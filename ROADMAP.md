@@ -16,12 +16,12 @@ up, so the planner always has an accurate picture of "what's next".
 
 ## 1. Current release status
 
-| Package | Latest | Published | Release group |
-| --- | --- | --- | --- |
-| [`@eiei114/pi-sub-core`](https://www.npmjs.com/package/@eiei114/pi-sub-core) | `2.8.0` | 2026-09-30 | **fixed** |
-| [`@eiei114/pi-sub-bar`](https://www.npmjs.com/package/@eiei114/pi-sub-bar) | `2.8.0` | 2026-09-30 | **fixed** |
-| [`@eiei114/pi-sub-shared`](https://www.npmjs.com/package/@eiei114/pi-sub-shared) | `2.8.0` | 2026-09-30 | **fixed** |
-| [`@eiei114/pi-sub-status`](https://www.npmjs.com/package/@eiei114/pi-sub-status) | `2.1.1` | 2026-09-30 | independent |
+| Package | Workspace version | Release status | Latest published | Release group |
+| --- | --- | --- | --- | --- |
+| [`@eiei114/pi-sub-core`](https://www.npmjs.com/package/@eiei114/pi-sub-core) | `2.8.1` | pending | `2.8.0` (2026-10-12) | **fixed** |
+| [`@eiei114/pi-sub-bar`](https://www.npmjs.com/package/@eiei114/pi-sub-bar) | `2.8.1` | pending | `2.8.0` (2026-10-12) | **fixed** |
+| [`@eiei114/pi-sub-shared`](https://www.npmjs.com/package/@eiei114/pi-sub-shared) | `2.8.1` | pending | `2.8.0` (2026-10-12) | **fixed** |
+| [`@eiei114/pi-sub-status`](https://www.npmjs.com/package/@eiei114/pi-sub-status) | `2.1.2` | pending | `2.1.1` (2026-09-30) | independent |
 
 - `2.0.0` was a **major** bump ([PR #13](https://github.com/eiei114/pi-sub/pull/13),
   DOT-771): the Pi SDK peer dependency moved from the frozen `@mariozechner/*`

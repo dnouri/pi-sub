@@ -1,5 +1,11 @@
 # @eiei114/pi-sub-shared
 
+## 2.8.1
+
+### Patch Changes
+
+- Align the fixed workspace release group with the Pi SDK 1.1.0 compatibility verification; the shared event contract is unchanged.
+
 ## 2.8.0
 
 ### Minor Changes
